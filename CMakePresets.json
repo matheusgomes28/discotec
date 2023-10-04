@@ -5,7 +5,7 @@
             "name": "conan-deb",
             "hidden": true,
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/conan/deb/conan_toolchain.cmake"
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/conan/deb/build/Debug/generators/conan_toolchain.cmake"
             }
         },
         {
@@ -87,7 +87,7 @@
             "binaryDir": "${sourceDir}/build/unix-deb",
             "inherits": ["unix", "deb", "conan-deb"],
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "-O0 --coverage -g -fsanitize=address",
+                "CMAKE_CXX_FLAGS": "-O0 --coverage -g",
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/unix-deb/install"
             }
         },
