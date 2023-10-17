@@ -12,6 +12,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 add_subdirectory(src/audio_visualizer)
+add_subdirectory(src/audio_playback)
 add_subdirectory(src/gl_abstractions)
 add_subdirectory(src/qt_abstractions)
 

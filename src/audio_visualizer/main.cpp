@@ -1,8 +1,15 @@
 #include <qt_abstractions/gl_window.h>
 #include <gl_abstractions/renderer.h>
 
+#include <audio_playback/audio_file.h>
+
 #include "shaders.h"
 
+#include <QAudioFormat>
+#include <QAudioSink>
+#include <QAudioDevice>
+#include <QBuffer>
+#include <QCommandLineParser>
 #include <QGuiApplication>
 #include <QMatrix4x4>
 #include <QOpenGLDebugLogger>
@@ -14,6 +21,12 @@
 #include <array>
 #include <iostream>
 #include <memory>
+#include <optional>
+
+#ifdef WINDOWS
+#include <QtPlugin>
+Q_IMPORT_PLUGIN (QWindowsIntegrationPlugin)
+#endif // WINDOWS
 
 namespace {
     // {x, y, z}, {r, g, b}, {u, v}
@@ -37,10 +50,6 @@ namespace {
         void render() override;
 
     private:
-        // GLint m_posAttr = 0;
-        // GLint m_colAttr = 0;
-        // GLint m_matrix_uniform  = 0;
-
         // Vertex stuff
         GLuint m_vertex_array = 0;
         GLuint m_vertex_buffer = 0;
@@ -65,24 +74,55 @@ namespace {
             qDebug() << message;
         }
     }
+
+    struct ProgramArgs
+    {
+        // This is the file we will read and play
+        std::string audio_file;
+    };
+
+    auto parse_arguments(QCoreApplication const& app) -> std::optional<ProgramArgs>
+    {
+        QCommandLineParser parser;
+        parser.setApplicationDescription("A simple audio visualizer");
+        parser.addHelpOption();
+        parser.addVersionOption();
+
+        parser.addPositionalArgument("audio", QCoreApplication::translate("main", "audio file to play"));
+
+        // Process the actual command line arguments given by the user
+        parser.process(app);
+
+        const QStringList args = parser.positionalArguments();
+        if (args.size() != 1)
+        {
+            return std::nullopt;
+        }
+        
+        auto const audio_file = args[0].toStdString();
+        return ProgramArgs{
+            .audio_file = audio_file
+        };
+    }
+
+    auto get_chunk_size(QAudioSink* sync) {
+        auto const buffer_size = sync->bufferSize();
+        const unsigned int target_size =  44100 / 10;
+
+        unsigned int padding = buffer_size > target_size ? (buffer_size - target_size) : 0;
+        unsigned int bytes_free = sync->bytesFree();
+        if (bytes_free > padding) {
+            unsigned int to_send =  bytes_free - padding;
+            if (target_size < to_send) {
+                return target_size;
+            }
+            return to_send;
+        }
+
+        return 0u;
+    }
 } // namespace
 
-int main(int argc, char **argv)
-{
-    QGuiApplication app(argc, argv);
-
-    QSurfaceFormat format;
-    format.setSamples(16);
-
-    TriangleWindow window;
-    window.setFormat(format);
-    window.resize(640, 480);
-    window.show();
-
-    window.setAnimating(true);
-
-    return app.exec();
-}
 //! [2]
 
 //! [4]
@@ -132,92 +172,83 @@ void TriangleWindow::initialize()
     };
     m_renderer->add_mesh(triangle_mesh);
 
-    /*
-    auto const shader_program_data = ShaderProgramData{
-        .vertex_shader = vertexShaderSource,
-        .fragment_shader = fragmentShaderSource
-    };
-
-    m_program = std::make_unique<ShaderProgram>();
-    m_program->compile_program(shader_program_data);
-
-    show_gl_logs(*this);
-
-    // Uploading vertex data to openG
-    glGenBuffers(1, &m_vertex_buffer);
-    Q_ASSERT(m_vertex_buffer > 0); // Is this valid?
-    glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-    
-    // Upload the elements
-    glGenBuffers(1, &m_element_buffer);
-    Q_ASSERT(m_element_buffer > 0); // Is this valid?
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_element_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-    // Bind the VAO - data config book
-    glGenVertexArrays(1, &m_vertex_array);
-    Q_ASSERT(m_vertex_array > 0); // Is this valid?
-    glBindVertexArray(m_vertex_array);
-    show_gl_logs(*this);
-
-    // needs to be enabled before the vertex bufers?
-
-    // enable the vertices data stuff
-    glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
-    glEnableVertexAttribArray(m_program->get_vertex_attrib()); // Is this correct?
-    glVertexAttribPointer(m_program->get_vertex_attrib(), 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), NULL);
-
-    show_gl_logs(*this);
-
-    // enable the colour data stuff
-    glEnableVertexAttribArray(m_program->get_colour_attrib()); // Is this correct?
-    glVertexAttribPointer(m_program->get_colour_attrib(), 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*) (3 * sizeof(float)));
-
-    show_gl_logs(*this);
-    */
 }
-//! [4]
 
-//! [5]
 void TriangleWindow::render()
 {
     const qreal retinaScale = devicePixelRatio();
     m_renderer->render(retinaScale, width(), height(), screen()->refreshRate());
-    /*
+}
 
-    glViewport(0, 0, width() * retinaScale, height() * retinaScale);
+int main(int argc, char **argv)
+{
+    QGuiApplication app(argc, argv);
+    auto const maybe_program_args = parse_arguments(app);
+    if (!maybe_program_args)
+    {
+        std::cout << "wrong arguments passed in\n";
+        return -1;
+    }
 
-    glClear(GL_COLOR_BUFFER_BIT);
+    // unpack all the arguments
+    auto const program_args = maybe_program_args.value();
 
-    m_program->use();
+    QSurfaceFormat format;
+    format.setSamples(16);
 
-    QMatrix4x4 matrix;
-    matrix.perspective(60.0f, 4.0f / 3.0f, 0.1f, 100.0f);
-    matrix.translate(0, 0, -2);
-    matrix.rotate(100.0f * m_frame / screen()->refreshRate(), 0, 1, 0);
+    TriangleWindow window;
+    window.setFormat(format);
+    window.resize(640, 480);
+    window.show();
+
+    window.setAnimating(true);
+
+//     AudioFile<double> audio_file;
+//     audio_file.load(program_args.audio_file);
+//     audio_file.printSummary();
+
+//     int channel = 0;
+//     int num_samples = audio_file.getNumSamplesPerChannel();
+
+//     for (int i = 0; i < num_samples; i++)
+//     {
+//         double const curr_sample = audio_file.samples[channel][i];
+//         std::cout << curr_sample << ", ";
+//     }
+//     std::cout << std::endl;
+
+//     char *bufferArray;
+
+//    // TODO: copy these
+//     QBuffer buffer;
+//     buffer.setData(audio_file.samples[0], audio_file.samples[0].size());
     
-    m_program->set_matrix(matrix);
+//     // format has been declared before this line
+//     QAudioOutput* audio = new QAudioOutput(format);
+//     audio.start(&buffer);
 
-    show_gl_logs(*this);
+    auto const audio_file = WaveFile{program_args.audio_file};
+    auto const audio_buffer = audio_file.get_data().value();
+    auto const audio_data = audio_buffer.constData<char>();
+    //auto const audio_data_size = audio_buffer.byteCount();
 
-    glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_element_buffer);
+    auto audio_output = QAudioSink{audio_file.get_format().value()};
+    auto device = audio_output.start();
+    
 
+    bool song_playing = true;
+    auto offset = 0;
+    while(song_playing)
+    {
+        auto const chunk_size = get_chunk_size(&audio_output);
+        device->write(audio_data + offset, chunk_size);
+        offset += chunk_size;
 
-    glBindVertexArray(m_vertex_array);
-    glEnableVertexAttribArray(m_program->get_vertex_attrib());
-    glEnableVertexAttribArray(m_program->get_colour_attrib());
+        if ((offset + chunk_size) > 441000) {
+            song_playing = false;
+        }
+        device->waitForBytesWritten(-1);
+    }
 
-    show_gl_logs(*this);
-
-    // glDrawArrays(GL_TRIANGLES, 0, 3);
-    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, NULL);
-
-    show_gl_logs(*this);
-
-    m_program->unuse();
-
-    ++m_frame;
-    */
+    return app.exec();
 }

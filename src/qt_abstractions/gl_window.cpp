@@ -100,10 +100,6 @@ void OpenGLWindow::renderNow()
         initialize();
     }
 
-    auto const format = m_context->format();
-    auto const major = format.majorVersion();
-    auto const minor = format.minorVersion();
-
     render();
 
     m_context->swapBuffers(this);

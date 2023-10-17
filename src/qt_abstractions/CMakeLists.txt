@@ -6,5 +6,6 @@ target_include_directories(qt_abstractions PUBLIC include)
 
 target_link_libraries(qt_abstractions
  PUBLIC
+  Qt6::Core
   Qt6::Gui
   Qt6::OpenGL)

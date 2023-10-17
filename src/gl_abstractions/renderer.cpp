@@ -125,7 +125,7 @@ auto Renderer::render(double retinaScale, int width, int height, double refresh_
         glEnableVertexAttribArray(colour_attrib);
         glEnableVertexAttribArray(uv_attrib);
 
-        glDrawElements(GL_TRIANGLES, mesh.mesh.indices.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(mesh.mesh.indices.size()), GL_UNSIGNED_INT, 0);
 
         glBindVertexArray(0);
     }
