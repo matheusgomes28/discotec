@@ -2,6 +2,8 @@
 #include <gl_abstractions/mesh.h>
 #include <gl_abstractions/shaders.h>
 
+#include <maecs/maecs.hpp>
+
 #include <QMatrix4x4>
 
 #include <utility>
@@ -11,7 +13,7 @@ Renderer::Renderer()
     initializeOpenGLFunctions();
 }
 
-auto Renderer::add_mesh(Mesh const& mesh) -> void
+auto Renderer::add_mesh(Mesh const& mesh, std::shared_ptr<maecs::Registry<RenderedMesh>> registry) -> void
 {
     unsigned int buffer_id = 0;
 
@@ -64,7 +66,10 @@ auto Renderer::add_mesh(Mesh const& mesh) -> void
         vertex_array_object,
         element_buffer
     };
-    _meshes.push_back(std::move(rendered_mesh));
+    
+    // TODO : sort out how the entity id will be set here,
+    // as we're just using the buffer ID right now
+    registry->newest_set(rendered_mesh.buffer, rendered_mesh);
 }
 
 auto Renderer::add_shader(ShaderProgramData const& shader_data) -> bool
@@ -88,11 +93,13 @@ auto Renderer::add_shader(ShaderProgramData const& shader_data) -> bool
     return true;
 }
 
-auto Renderer::render(double retinaScale, int width, int height, double refresh_rate) -> void
+auto Renderer::render(double retinaScale, int width, int height, double refresh_rate, std::shared_ptr<maecs::Registry<RenderedMesh>> registry) -> void
 {
-    glViewport(0, 0, width * retinaScale, height * retinaScale);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
 
-    glClear(GL_COLOR_BUFFER_BIT);
+    glViewport(0, 0, width * retinaScale, height * retinaScale);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     // TODO : Make it work for all renderers
     Q_ASSERT(_shaders.size() > 0);
@@ -106,9 +113,16 @@ auto Renderer::render(double retinaScale, int width, int height, double refresh_
     matrix.rotate(100.0f * _frame / refresh_rate, 1, 0, 0);
     Q_ASSERT(shader.set_matrix(matrix));
 
-
-    for (auto const& mesh : _meshes)
+    auto maybe_meshes = registry->newest_get<RenderedMesh>();
+    if (!maybe_meshes)
     {
+        return;
+    }
+
+    for (auto const& entity_view : *maybe_meshes)
+    {
+        auto const mesh = entity_view.component<RenderedMesh>(); 
+
         glBindBuffer(GL_ARRAY_BUFFER, mesh.buffer);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.element_buffer);
         glBindVertexArray(mesh.vertex_array);

@@ -6,6 +6,8 @@ add_library(gl_abstractions
 target_include_directories(gl_abstractions PUBLIC include)
 
 target_link_libraries(gl_abstractions
+ PRIVATE
+  maecs::maecs
  PUBLIC
   Qt6::Core
   Qt6::OpenGL)

@@ -21,5 +21,7 @@ auto AudioPlayer::load_wave(std::string const& filename) -> bool
         return false;
     }
 
-    _audio_sink = std::make_unique<QAudioSink>(format.value(), this);
+    // This is cursed
+    _audio_sink = std::make_unique<QAudioSink>(format.value(), nullptr);
+    return true;
 }

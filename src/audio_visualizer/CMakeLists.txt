@@ -6,14 +6,15 @@ add_executable(visualizer main.cpp)
 
 target_link_libraries(visualizer
  PRIVATE
-  fmt::fmt
-  gl_abstractions
-  qt_abstractions
   Qt6::Core
   Qt6::Gui
   Qt6::Multimedia
-  
-  audio_playback)
+  audio_playback
+  fmt::fmt
+  gl_abstractions
+  maecs::maecs
+  qt_abstractions
+)
 
 if (WIN32)
   target_link_libraries(visualizer

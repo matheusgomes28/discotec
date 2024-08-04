@@ -7,7 +7,7 @@
 #include <optional>
 
 WaveFile::WaveFile(std::string const& path)
-    : _audio_file{new AudioFile<float>{}}
+    : _audio_file{new AudioFile<std::int32_t>{}}
 {
     // TODO : In the future we want to drop this
     // _audio_file because it duplicates the audio
@@ -30,13 +30,14 @@ auto WaveFile::get_format() const -> std::optional<QAudioFormat>
 
     // Create the audio format
     QAudioFormat audio_format;
-    audio_format.setSampleRate(_audio_file->getSampleRate());
+
     audio_format.setChannelCount(_audio_file->getNumChannels());
     audio_format.setSampleRate(_audio_file->getSampleRate());
-    audio_format.setSampleFormat(QAudioFormat::Float);
+    audio_format.setSampleFormat(QAudioFormat::Int32);
     
     // TODO : What happens if the file doesn't have only 2 channels?
     audio_format.setChannelConfig(QAudioFormat::ChannelConfigStereo);
+    
 
     return audio_format;
 }
@@ -56,17 +57,19 @@ auto WaveFile::get_data() const -> std::optional<QAudioBuffer>
 
 
     // TODO : Interleave the data here
-    auto const num_frames = _audio_file->getNumSamplesPerChannel();
-    QAudioBuffer buffer{num_frames * 2, format.value(), -1};
+    //auto const num_frames = _audio_file->getNumSamplesPerChannel();
+    //QAudioBuffer buffer{num_frames * 2, format.value(), -1};
+    QByteArray array{reinterpret_cast<char*>(_audio_file->samples[0].data()), static_cast<qsizetype>(_audio_file->samples[0].size() * sizeof(std::int32_t))};
+    QAudioBuffer buffer{array, get_format().value(), -1};
 
-    for (int i = 0; i < num_frames; ++i)
-    {
-        // TODO : Does this automatically convert the float
-        // to qreal doubles?
-        auto data = buffer.data<float>();
-        data[i * 2] = _audio_file->samples[0][i];
-        data[i * 2 + 1] = _audio_file->samples[1][i];
-    }
+    // for (int i = 0; i < num_frames; ++i)
+    // {
+    //     // TODO : Does this automatically convert the float
+    //     // to qreal doubles?
+    //     auto data = buffer.data<std::int32_t>();
+    //     data[i * 2] = _audio_file->samples[0][i];
+    //     data[i * 2 + 1] = _audio_file->samples[1][i];
+    // }
 
     return buffer;
 }

@@ -13,8 +13,6 @@ class WaveFile;
 
 class AudioPlayer
 {
-    Q_OBJECT
-
 public:
     AudioPlayer();
     bool load_wave(std::string const& filename);

@@ -33,7 +33,7 @@ public:
     std::optional<QAudioBuffer> get_data() const;
 
 private:
-    std::unique_ptr<AudioFile<float>> _audio_file;
+    std::unique_ptr<AudioFile<std::int32_t>> _audio_file;
 };
 
 #endif // AUDIO_PLAYBACK_AUDIO_FILE_H

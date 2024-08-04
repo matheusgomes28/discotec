@@ -4,8 +4,6 @@
 #include <memory>
 #include <string>
 
-
-
 // BEGIN_QT_NAMESPACE
 // class QAudioDeviceInfo;
 // QT_END_NAMESPACE

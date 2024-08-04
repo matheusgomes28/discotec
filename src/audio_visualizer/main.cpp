@@ -44,6 +44,8 @@ namespace {
     class TriangleWindow : public OpenGLWindow
     {
     public:
+        explicit TriangleWindow(std::shared_ptr<maecs::Registry<RenderedMesh>> registry);
+        TriangleWindow() = delete;
         using OpenGLWindow::OpenGLWindow;
 
         void initialize() override;
@@ -63,6 +65,7 @@ namespace {
 
 
         std::unique_ptr<Renderer> m_renderer;
+        std::shared_ptr<maecs::Registry<RenderedMesh>> _registry;
     };
 
     void show_gl_logs(TriangleWindow& window) {
@@ -124,6 +127,10 @@ namespace {
 } // namespace
 
 //! [2]
+TriangleWindow::TriangleWindow(std::shared_ptr<maecs::Registry<RenderedMesh>> registry)
+    : OpenGLWindow{}, _registry{registry}
+{
+}
 
 //! [4]
 void TriangleWindow::initialize()
@@ -170,14 +177,14 @@ void TriangleWindow::initialize()
         },
         .shader_program = 0
     };
-    m_renderer->add_mesh(triangle_mesh);
+    m_renderer->add_mesh(triangle_mesh, _registry);
 
 }
 
 void TriangleWindow::render()
 {
     const qreal retinaScale = devicePixelRatio();
-    m_renderer->render(retinaScale, width(), height(), screen()->refreshRate());
+    m_renderer->render(retinaScale, width(), height(), screen()->refreshRate(), _registry);
 }
 
 int main(int argc, char **argv)
@@ -196,59 +203,14 @@ int main(int argc, char **argv)
     QSurfaceFormat format;
     format.setSamples(16);
 
-    TriangleWindow window;
+    auto registry = std::make_shared<maecs::Registry<RenderedMesh>>();
+
+    TriangleWindow window{registry};
     window.setFormat(format);
     window.resize(640, 480);
     window.show();
 
     window.setAnimating(true);
-
-//     AudioFile<double> audio_file;
-//     audio_file.load(program_args.audio_file);
-//     audio_file.printSummary();
-
-//     int channel = 0;
-//     int num_samples = audio_file.getNumSamplesPerChannel();
-
-//     for (int i = 0; i < num_samples; i++)
-//     {
-//         double const curr_sample = audio_file.samples[channel][i];
-//         std::cout << curr_sample << ", ";
-//     }
-//     std::cout << std::endl;
-
-//     char *bufferArray;
-
-//    // TODO: copy these
-//     QBuffer buffer;
-//     buffer.setData(audio_file.samples[0], audio_file.samples[0].size());
-    
-//     // format has been declared before this line
-//     QAudioOutput* audio = new QAudioOutput(format);
-//     audio.start(&buffer);
-
-    auto const audio_file = WaveFile{program_args.audio_file};
-    auto const audio_buffer = audio_file.get_data().value();
-    auto const audio_data = audio_buffer.constData<char>();
-    //auto const audio_data_size = audio_buffer.byteCount();
-
-    auto audio_output = QAudioSink{audio_file.get_format().value()};
-    auto device = audio_output.start();
-    
-
-    bool song_playing = true;
-    auto offset = 0;
-    while(song_playing)
-    {
-        auto const chunk_size = get_chunk_size(&audio_output);
-        device->write(audio_data + offset, chunk_size);
-        offset += chunk_size;
-
-        if ((offset + chunk_size) > 441000) {
-            song_playing = false;
-        }
-        device->waitForBytesWritten(-1);
-    }
 
     return app.exec();
 }
