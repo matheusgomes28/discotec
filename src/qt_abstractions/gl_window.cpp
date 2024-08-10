@@ -92,8 +92,8 @@ void OpenGLWindow::renderNow()
     }
 
     m_context->makeCurrent(this);
-    m_logger = new QOpenGLDebugLogger(this);
-    m_logger->initialize();
+    // m_logger = new QOpenGLDebugLogger(this);
+    // m_logger->initialize();
 
     if (needsInitialize) {
         initializeOpenGLFunctions();
@@ -116,7 +116,7 @@ void OpenGLWindow::setAnimating(bool animating)
         renderLater();
 }
 
-QOpenGLDebugLogger* OpenGLWindow::getLogger()
-{
-    return m_logger;
-}
+// QOpenGLDebugLogger* OpenGLWindow::getLogger()
+// {
+//     return m_logger;
+// }

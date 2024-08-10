@@ -89,7 +89,7 @@ private:
     bool m_animating = false;
 
     QOpenGLContext* m_context = nullptr;
-    QOpenGLDebugLogger* m_logger = nullptr;
+    // QOpenGLDebugLogger* m_logger = nullptr;
     QOpenGLPaintDevice *m_device = nullptr;
 };
 #endif // QG_ABSTRACTIONS_GL_WINDOW_H

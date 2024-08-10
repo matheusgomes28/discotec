@@ -13,6 +13,9 @@ Renderer::Renderer()
     initializeOpenGLFunctions();
 }
 
+/// @brief System that converts a Mesh object to a RenderedMesh
+/// @param mesh the mesh object containing the draw data
+/// @param registry the ecs
 auto Renderer::add_mesh(Mesh const& mesh, std::shared_ptr<maecs::Registry<RenderedMesh>> registry) -> void
 {
     unsigned int buffer_id = 0;
